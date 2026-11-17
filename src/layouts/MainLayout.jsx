@@ -54,6 +54,7 @@ import { COLORS, RADII, SHADOWS, SPACING, UI_CLASSES } from '../theme'
 import Sidebar from '../components/ui/Sidebar'
 import { useDashboardStore, DISPLAY_TIMEZONE } from '../stores/dashboard'
 import { useFilterLists } from '../hooks/useFilterLists'
+import { APP_VERSION, LAST_UPDATE_DATE, APP_AUTHOR } from '../version'
 
 const NAV_SECTIONS = [
   {
@@ -68,7 +69,7 @@ const NAV_SECTIONS = [
   {
     title: 'Aderência & Gestão',
     items: [
-      { to: '/pausas', label: 'Aderência às Pausas', sublabel: 'Controle NR-17', Icon: ScheduleIcon },
+      { to: '/pausas', label: 'Aderência às Pausas', sublabel: 'Controle NR-17', Icon: ScheduleIcon, badge: 'NOVA ABA' },
       { to: '/frequencia', label: 'Histórico Anual', sublabel: 'Consolidado Optimus', Icon: CalendarMonthIcon }
     ]
   },
@@ -970,6 +971,16 @@ export default function MainLayout() {
 
             <Outlet />
           </div>
+
+          {/* Rodapé Corporativo Padrão SGP */}
+          <footer className="mt-auto border-t border-slate-200/90 bg-white/80 backdrop-blur-xs px-6 py-2.5 text-[11px] text-slate-500 flex flex-wrap items-center justify-between gap-2 shrink-0">
+            <div>
+              Desenvolvido por <span className="font-medium text-slate-700">{APP_AUTHOR}</span>
+            </div>
+            <div className="font-mono tabular-nums text-slate-500">
+              Versão: <span className="font-semibold text-slate-700">{APP_VERSION}</span> [Atualizado em: {LAST_UPDATE_DATE}]
+            </div>
+          </footer>
         </div>
       </div>
     </LocalizationProvider>

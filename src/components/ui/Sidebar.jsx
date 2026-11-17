@@ -75,10 +75,10 @@ export function Sidebar({
             )}
 
             <div className="flex flex-col gap-1">
-              {sec.items.map(({ to, label, sublabel, Icon }) => (
+              {sec.items.map(({ to, label, sublabel, Icon, badge }) => (
                 <Tooltip
                   key={to}
-                  title={label}
+                  title={badge ? `${label} (${badge})` : label}
                   placement="right"
                   arrow
                   disableInteractive
@@ -116,25 +116,37 @@ export function Sidebar({
                                 : 'group-hover:translate-x-1'
                           }`}
                         >
-                          <Icon
-                            sx={{ fontSize: 19 }}
-                            className={`shrink-0 transform transition-all duration-200 ease-out ${
-                              isActive
-                                ? 'text-hapvida-navy'
-                                : 'text-slate-500 group-hover:text-hapvida-blue group-hover:scale-110'
-                            }`}
-                          />
+                          <div className="relative shrink-0 flex items-center justify-center">
+                            <Icon
+                              sx={{ fontSize: 19 }}
+                              className={`transform transition-all duration-200 ease-out ${
+                                isActive
+                                  ? 'text-hapvida-navy'
+                                  : 'text-slate-500 group-hover:text-hapvida-blue group-hover:scale-110'
+                              }`}
+                            />
+                            {collapsed && badge && (
+                              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+                            )}
+                          </div>
                           {!collapsed && (
                             <div className="hidden md:flex flex-col min-w-0">
-                              <span
-                                className={`text-body leading-tight truncate transition-colors duration-150 ${
-                                  isActive
-                                    ? 'font-semibold text-hapvida-navy'
-                                    : 'font-medium text-slate-800 group-hover:text-slate-950'
-                                }`}
-                              >
-                                {label}
-                              </span>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span
+                                  className={`text-body leading-tight truncate transition-colors duration-150 ${
+                                    isActive
+                                      ? 'font-semibold text-hapvida-navy'
+                                      : 'font-medium text-slate-800 group-hover:text-slate-950'
+                                  }`}
+                                >
+                                  {label}
+                                </span>
+                                {badge && (
+                                  <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs whitespace-nowrap shrink-0">
+                                    {badge}
+                                  </span>
+                                )}
+                              </div>
                               {sublabel && (
                                 <span
                                   className={`font-mono text-label leading-tight truncate mt-1 transition-colors duration-150 ${
