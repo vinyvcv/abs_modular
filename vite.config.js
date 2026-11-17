@@ -2,12 +2,13 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import fs from 'fs'
+import net from 'net'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-function getEnvVar(key, defaultValue) {
+function readDotEnvVar(key) {
   try {
     const envPath = path.join(__dirname, '.env')
     if (fs.existsSync(envPath)) {
@@ -23,30 +24,75 @@ function getEnvVar(key, defaultValue) {
         }
       }
     }
-  } catch (_) {}
+  } catch {
+    return ''
+  }
+  return ''
+}
+
+function getEnvVar(key, defaultValue) {
+  const fromFile = readDotEnvVar(key)
+  if (fromFile) return fromFile
   return process.env[key] || defaultValue
 }
 
-const apiHost = getEnvVar('API_HOST', '127.0.0.1')
-const apiPortAbs = getEnvVar('API_PORT_ABS', '3100')
-const apiPortD0 = getEnvVar('API_PORT_D0', '3002')
+function isPortReachable(host, port, timeoutMs = 150) {
+  return new Promise((resolve) => {
+    const socket = new net.Socket()
+    let settled = false
+    const finish = (ok) => {
+      if (settled) return
+      settled = true
+      socket.destroy()
+      resolve(ok)
+    }
+    socket.setTimeout(timeoutMs)
+    socket.once('connect', () => finish(true))
+    socket.once('timeout', () => finish(false))
+    socket.once('error', () => finish(false))
+    socket.connect(Number(port), host)
+  })
+}
 
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  server: {
-    host: 'localhost',
-    port: 8501,
-    proxy: {
-      '/api-abs': {
-        target: `http://${apiHost}:${apiPortAbs}`,
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/api-abs/, '')
-      },
-      '/api-d0': {
-        target: `http://${apiHost}:${apiPortD0}`,
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/api-d0/, '')
-      }
+export default defineConfig(async () => {
+  const dotEnvApiHost = readDotEnvVar('API_HOST')
+  const rawApiHost = getEnvVar('API_HOST', '')
+  const apiHost = rawApiHost || '127.0.0.1'
+  const apiPortAbs = getEnvVar('API_PORT_ABS', '3100')
+  const apiPortD0 = getEnvVar('API_PORT_D0', '3002')
+
+  const isLoopback = apiHost === '127.0.0.1' || apiHost === 'localhost' || apiHost === '::1'
+  const hasExternalApi = Boolean(rawApiHost) && (
+    Boolean(dotEnvApiHost) ||
+    !isLoopback ||
+    (await isPortReachable(apiHost, apiPortAbs))
+  )
+
+  return {
+    plugins: [react(), tailwindcss()],
+    define: {
+      __HAS_EXTERNAL_API__: JSON.stringify(hasExternalApi)
+    },
+    server: {
+      host: '0.0.0.0',
+      port: 3000,
+      allowedHosts: true,
+      ...(hasExternalApi
+        ? {
+            proxy: {
+              '/api-abs': {
+                target: `http://${apiHost}:${apiPortAbs}`,
+                changeOrigin: true,
+                rewrite: (p) => p.replace(/^\/api-abs/, '')
+              },
+              '/api-d0': {
+                target: `http://${apiHost}:${apiPortD0}`,
+                changeOrigin: true,
+                rewrite: (p) => p.replace(/^\/api-d0/, '')
+              }
+            }
+          }
+        : {})
     }
   }
 })

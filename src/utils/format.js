@@ -1,3 +1,5 @@
+import { COLORS, UI_CLASSES } from '../theme'
+
 export function normalizeAbsValue(val) {
   if (val === null || val === undefined || val === '') return null
   const parsed = Number(val)
@@ -26,76 +28,40 @@ export function formatSituacaoPercent(val) {
   return `${parsed.toFixed(1)}%`
 }
 
-export function getAbsColorStyle(val) {
+export function getAbsBadgeClass(val) {
   const absValue = normalizeAbsValue(val)
-  if (absValue === null) return {}
-  const base = {
-    borderRadius: '9999px',
-    px: 1.25,
-    py: 0.35,
-    fontSize: '0.75rem',
-    fontWeight: 600,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    lineHeight: 1.2
-  }
-  if (absValue <= 5) {
-    return { ...base, backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' }
-  }
-  if (absValue <= 8) {
-    return { ...base, backgroundColor: '#fffbeb', color: '#92400e', border: '1px solid #fde68a' }
-  }
-  return { ...base, backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' }
+  if (absValue === null) return ''
+  const variant = absValue <= 5
+    ? UI_CLASSES.badgeVariants.success
+    : absValue <= 8
+      ? UI_CLASSES.badgeVariants.warning
+      : UI_CLASSES.badgeVariants.danger
+  return `${UI_CLASSES.badgeBase} ${UI_CLASSES.badgeSizes.small} ${variant}`
 }
 
-export function getStatusStyle(val) {
+export function getStatusBadgeClass(val) {
   const v = String(val || '').toUpperCase().trim()
-  const base = {
-    borderRadius: '9999px',
-    px: 1.25,
-    py: 0.35,
-    fontSize: '0.75rem',
-    fontWeight: 600,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    lineHeight: 1.2
-  }
-  if (v === 'PRESENTE') {
-    return { ...base, backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' }
-  }
-  if (v === 'EM_FALTA') {
-    return { ...base, backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' }
-  }
-  if (v === 'AGUARDANDO_JANELA') {
-    return { ...base, backgroundColor: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }
-  }
-  return { ...base, backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', fontWeight: 500 }
+  const variant = v === 'PRESENTE'
+    ? UI_CLASSES.badgeVariants.success
+    : v === 'EM_FALTA'
+      ? UI_CLASSES.badgeVariants.danger
+      : v === 'AGUARDANDO_JANELA'
+        ? UI_CLASSES.badgeVariants.info
+        : `${UI_CLASSES.badgeVariants.neutral} font-medium`
+  return `${UI_CLASSES.badgeBase} ${UI_CLASSES.badgeSizes.small} ${variant}`
 }
 
-export function getTipoLoginStyle(val) {
-  const base = {
-    borderRadius: '9999px',
-    px: 1.25,
-    py: 0.35,
-    fontSize: '0.75rem',
-    fontWeight: 600,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    lineHeight: 1.2
-  }
+export function getTipoLoginBadgeClass(val) {
   if (val === 'LOGIN_ATRASADO') {
-    return { ...base, backgroundColor: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' }
+    return `${UI_CLASSES.badgeBase} ${UI_CLASSES.badgeSizes.small} ${UI_CLASSES.badgeVariants.danger}`
   }
   if (val === 'LOGIN_ADIANTADO') {
-    return { ...base, backgroundColor: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }
+    return `${UI_CLASSES.badgeBase} ${UI_CLASSES.badgeSizes.small} ${UI_CLASSES.badgeVariants.info}`
   }
   if (val === 'ADERENTE') {
-    return { ...base, backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' }
+    return `${UI_CLASSES.badgeBase} ${UI_CLASSES.badgeSizes.small} ${UI_CLASSES.badgeVariants.success}`
   }
-  return {}
+  return ''
 }
 
 export function formatTipoLoginText(val) {
@@ -114,21 +80,21 @@ export function formatTime(isoStr) {
 }
 
 export const OPERADOR_COLUMNS = [
-  { field: 'matricula', label: 'Matrícula' },
-  { field: 'nome_operador', label: 'Operador' },
-  { field: 'nome_supervisor', label: 'Supervisor' },
-  { field: 'nome_coordenador_atend', label: 'Coord. Atendimento' },
-  { field: 'nome_coordenador_op', label: 'Coord. Operação' },
-  { field: 'nome_gerente', label: 'Gerente' },
+  { field: 'matricula', label: 'Matrícula', mono: true },
+  { field: 'nome_operador', label: 'Operador', noWrap: true },
+  { field: 'nome_supervisor', label: 'Supervisor', noWrap: true },
+  { field: 'nome_coordenador_atend', label: 'Coord. Atendimento', noWrap: true },
+  { field: 'nome_coordenador_op', label: 'Coord. Operação', noWrap: true },
+  { field: 'nome_gerente', label: 'Gerente', noWrap: true },
   { field: 'gestao', label: 'Gestão' },
-  { field: 'segmento', label: 'Segmento' },
-  { field: 'hora_entrada', label: 'Horário' },
-  { field: 'entradaReal', label: 'Entrada Real' },
-  { field: 'tipoLogin', label: 'Tipo Login' },
-  { field: 'hora_limite', label: 'Limite' },
-  { field: 'status', label: 'Status' },
-  { field: 'pausa_atual', label: 'Pausa Atual' },
-  { field: 'pausas_resumo', label: 'Grade de Pausas' }
+  { field: 'segmento', label: 'Segmento', noWrap: true },
+  { field: 'hora_entrada', label: 'Horário', align: 'center', mono: true },
+  { field: 'entradaReal', label: 'Entrada Real', align: 'center', mono: true },
+  { field: 'tipoLogin', label: 'Tipo Login', align: 'center' },
+  { field: 'hora_limite', label: 'Limite', align: 'center', mono: true },
+  { field: 'status', label: 'Status', align: 'center' },
+  { field: 'pausa_atual', label: 'Pausa Atual', align: 'center' },
+  { field: 'pausas_resumo', label: 'Grade de Pausas', mono: true, noWrap: true }
 ]
 
 export const SITUACAO_COLUMNS = [
@@ -137,7 +103,7 @@ export const SITUACAO_COLUMNS = [
   { field: 'Pct', label: '%' }
 ]
 
-export const PRIMARY = '#093b8f'
+export const PRIMARY = COLORS.brand.navy
 
 export function formatPct(v) {
   return `${Number(v || 0).toFixed(1)}%`

@@ -1,26 +1,33 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Chart from 'react-apexcharts'
 import {
   Autocomplete,
-  Box,
   Button,
-  Chip,
   TextField,
   ToggleButton,
-  ToggleButtonGroup,
-  Tooltip,
-  Typography
+  ToggleButtonGroup
 } from '@mui/material'
 import FilterAltOffIcon from '@mui/icons-material/FilterAltOff'
-import GroupsIcon from '@mui/icons-material/Groups'
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import PercentIcon from '@mui/icons-material/Percent'
 import TrendingDownIcon from '@mui/icons-material/TrendingDown'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import SearchIcon from '@mui/icons-material/Search'
+import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore'
+import NavigateNextIcon from '@mui/icons-material/NavigateNext'
 import { useDashboardStore } from '../stores/dashboard'
-import { DataTable, SectionCard } from '../components/DataTable'
-import { HAPVIDA_PALETTE, baseChartOptions, buildCustomTooltip } from '../utils/chartConfig'
+import { DataTable, PillBadge, SectionCard } from '../components/DataTable'
+import SkeletonCard from '../components/ui/SkeletonCard'
+import { MetricCard, MetricGrid } from '../components/ui/MetricCard'
+import {
+  HAPVIDA_PALETTE,
+  baseChartOptions,
+  buildAbsTargetAnnotation,
+  buildCustomTooltip,
+  chartDataLabelBg,
+  chartDataLabelStyle
+} from '../utils/chartConfig'
+import { COLORS, RADII, SHADOWS, TYPOGRAPHY, UI_CLASSES } from '../theme'
 import {
   formatDateBr,
   formatMilhar,
@@ -60,76 +67,21 @@ const TIPO_OPTIONS = [
 ]
 
 const NOMES_COLUMNS = [
-  { field: 'data', label: 'Data' },
-  { field: 'nome_operador', label: 'Operador' },
-  { field: 'nome_supervisor', label: 'Supervisor' },
-  { field: 'nome_coordenador', label: 'Coordenador' },
-  { field: 'segmento', label: 'Segmento' },
-  { field: 'Frequencia', label: 'Frequência' },
-  { field: 'horario', label: 'Horário', align: 'center' },
+  { field: 'data', label: 'Data', mono: true, noWrap: true },
+  { field: 'nome_operador', label: 'Operador', noWrap: true },
+  { field: 'nome_supervisor', label: 'Supervisor', noWrap: true },
+  { field: 'nome_coordenador', label: 'Coordenador', noWrap: true },
+  { field: 'segmento', label: 'Segmento', noWrap: true },
+  { field: 'Frequencia', label: 'Frequência', align: 'center' },
+  { field: 'horario', label: 'Horário', align: 'center', mono: true, noWrap: true },
   { field: 'situacao', label: 'Situação' }
 ]
 
-function KpiCard({ label, value, Icon, iconColor, iconBg, badgeText, badgeBg, badgeColor, badgeBorder, tip }) {
-  return (
-    <div
-      className="custom-kpi-card"
-      style={{
-        flex: 1,
-        minWidth: 175,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        cursor: 'default'
-      }}
-    >
-      <div className="card-main-content">
-        <div style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
-          <div className="kpi-title" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span>{label}</span>
-            <Tooltip title={tip} arrow placement="top">
-              <InfoOutlinedIcon
-                sx={{
-                  fontSize: 14,
-                  color: '#94A3B8',
-                  cursor: 'help',
-                  transition: 'color 0.2s',
-                  '&:hover': { color: '#0B4F9C' }
-                }}
-              />
-            </Tooltip>
-          </div>
-          <div className="kpi-value">{value}</div>
-        </div>
-        {Icon ? (
-          <div
-            className="kpi-icon-container"
-            style={{
-              backgroundColor: iconBg || '#EFF6FF',
-              color: iconColor || '#0B4F9C'
-            }}
-          >
-            <Icon sx={{ fontSize: 20 }} />
-          </div>
-        ) : null}
-      </div>
-      {badgeText && (
-        <div style={{ padding: '0 18px 14px 18px' }}>
-          <span
-            className="kpi-badge"
-            style={{
-              backgroundColor: badgeBg || '#F8FAFC',
-              color: badgeColor || '#475569',
-              border: `1px solid ${badgeBorder || '#E2E8F0'}`,
-              margin: 0
-            }}
-          >
-            {badgeText}
-          </span>
-        </div>
-      )}
-    </div>
-  )
+const FREQ_BADGE_VARIANT = {
+  error: 'danger',
+  warning: 'warning',
+  success: 'success',
+  default: 'neutral'
 }
 
 export default function FrequenciaPage() {
@@ -148,10 +100,11 @@ export default function FrequenciaPage() {
   const frequenciaNomesSupervisor = useDashboardStore(s => s.frequenciaNomesSupervisor)
   const frequenciaNomesFiltros = useDashboardStore(s => s.frequenciaNomesFiltros)
   const frequenciaNomesLoading = useDashboardStore(s => s.frequenciaNomesLoading)
+  const frequenciaNomesPage = useDashboardStore(s => s.frequenciaNomesPage)
+  const frequenciaNomesPageSize = useDashboardStore(s => s.frequenciaNomesPageSize)
   const loading = useDashboardStore(s => s.loading)
 
   const fetchFrequenciaPageJobs = useDashboardStore(s => s.fetchFrequenciaPageJobs)
-  const fetchFrequencia = useDashboardStore(s => s.fetchFrequencia)
   const setFrequenciaYear = useDashboardStore(s => s.setFrequenciaYear)
   const setFrequenciaMonth = useDashboardStore(s => s.setFrequenciaMonth)
   const setFrequenciaNomesTipo = useDashboardStore(s => s.setFrequenciaNomesTipo)
@@ -159,13 +112,15 @@ export default function FrequenciaPage() {
   const setFrequenciaNomesFilters = useDashboardStore(s => s.setFrequenciaNomesFilters)
   const clearFrequenciaNomesFilters = useDashboardStore(s => s.clearFrequenciaNomesFilters)
   const setFrequenciaNomesPage = useDashboardStore(s => s.setFrequenciaNomesPage)
-  const frequenciaNomesPage = useDashboardStore(s => s.frequenciaNomesPage)
 
   const [nomeFilter, setNomeFilter] = useState(frequenciaNomesQ || '')
-  const [searchTimer, setSearchTimer] = useState(null)
+  const searchTimerRef = useRef(null)
 
   useEffect(() => {
     fetchFrequenciaPageJobs()
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    }
   }, [fetchFrequenciaPageJobs])
 
   const yearOptions = useMemo(
@@ -181,7 +136,8 @@ export default function FrequenciaPage() {
   }, [frequenciaYear, frequenciaMonth])
 
   const kpis = frequenciaData?.kpis || {}
-  const meses = frequenciaData?.meses || []
+  const kpisLoading = Boolean(loading && !kpis.pessoas)
+  const meses = useMemo(() => frequenciaData?.meses || [], [frequenciaData])
   const melhor = meses.length ? meses.reduce((a, b) => (a.abs_pct <= b.abs_pct ? a : b)) : null
   const pior = meses.length ? meses.reduce((a, b) => (a.abs_pct >= b.abs_pct ? a : b)) : null
 
@@ -216,25 +172,14 @@ export default function FrequenciaPage() {
       },
       stroke: { width: [0, 0, 3], curve: 'smooth' },
       colors: [HAPVIDA_PALETTE.blueNavy, HAPVIDA_PALETTE.redCoral, HAPVIDA_PALETTE.orange],
-      plotOptions: { bar: { columnWidth: '40%', borderRadius: 4 } },
+      annotations: buildAbsTargetAnnotation(5, 1),
+      plotOptions: { bar: { columnWidth: '40%', borderRadius: 4, borderRadiusApplication: 'end' } },
       dataLabels: {
         enabled: true,
         enabledOnSeries: [2],
         formatter: (val) => `${Number(val).toFixed(1)}%`,
-        style: {
-          fontSize: '11px',
-          fontFamily: 'Outfit, sans-serif',
-          fontWeight: 700,
-          colors: [HAPVIDA_PALETTE.slate900]
-        },
-        background: {
-          enabled: true,
-          foreColor: '#ffffff',
-          borderRadius: 4,
-          padding: 4,
-          opacity: 0.9,
-          borderColor: HAPVIDA_PALETTE.orange
-        }
+        style: chartDataLabelStyle,
+        background: chartDataLabelBg
       },
       labels: monthlyTableRows.map(r => String(r.Mes || '').slice(0, 3)),
       xaxis: {
@@ -246,7 +191,7 @@ export default function FrequenciaPage() {
         labels: {
           style: {
             fontSize: '11px',
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: TYPOGRAPHY.fonts.sans,
             colors: HAPVIDA_PALETTE.slate500
           }
         },
@@ -279,7 +224,7 @@ export default function FrequenciaPage() {
         }
       ],
       tooltip: {
-        custom: ({ series, seriesIndex, dataPointIndex }) => {
+        custom: ({ series, dataPointIndex }) => {
           const mes = monthlyTableRows[dataPointIndex]?.Mes || ''
           const pessoas = series[0]?.[dataPointIndex] ?? 0
           const absPessoas = series[1]?.[dataPointIndex] ?? 0
@@ -298,7 +243,7 @@ export default function FrequenciaPage() {
     }
   }, [monthlyTableRows])
 
-  const historicoSeries = frequenciaHistorico?.series || []
+  const historicoSeries = useMemo(() => frequenciaHistorico?.series || [], [frequenciaHistorico])
   const compareChartSeries = useMemo(() => {
     const years = [...new Set(historicoSeries.map(r => Number(r.year)))].sort()
     return years.map(year => {
@@ -324,7 +269,8 @@ export default function FrequenciaPage() {
     },
     stroke: { width: 3, curve: 'smooth' },
     colors: YEAR_COLORS,
-    markers: { size: 4, strokeColors: '#fff', strokeWidth: 2 },
+    annotations: buildAbsTargetAnnotation(5, 0),
+    markers: { size: 4, strokeColors: COLORS.surface.card, strokeWidth: 2 },
     xaxis: {
       categories: MESES_NOME,
       title: {
@@ -333,7 +279,12 @@ export default function FrequenciaPage() {
       },
       labels: {
         rotate: -30,
-        style: { fontSize: '11px', fontWeight: 600, colors: HAPVIDA_PALETTE.slate500 }
+        style: {
+          fontSize: '11px',
+          fontWeight: 600,
+          fontFamily: TYPOGRAPHY.fonts.sans,
+          colors: HAPVIDA_PALETTE.slate500
+        }
       },
       axisBorder: { color: HAPVIDA_PALETTE.slate200 },
       axisTicks: { color: HAPVIDA_PALETTE.slate200 }
@@ -350,7 +301,26 @@ export default function FrequenciaPage() {
       }
     },
     tooltip: {
-      y: { formatter: (v) => (v == null ? '—' : formatPct(v)) }
+      shared: true,
+      custom: ({ series, dataPointIndex, w }) => {
+        const mesNome = MESES_NOME[dataPointIndex] || ''
+        const items = (w.globals.seriesNames || [])
+          .map((yearLabel, idx) => {
+            const val = series[idx]?.[dataPointIndex]
+            if (val == null) return null
+            return {
+              color: YEAR_COLORS[idx % YEAR_COLORS.length],
+              label: `Ano ${yearLabel}`,
+              value: formatPct(val)
+            }
+          })
+          .filter(Boolean)
+
+        return buildCustomTooltip({
+          headerTitle: `Comparativo · ${mesNome}`,
+          items
+        })
+      }
     }
   }), [])
 
@@ -369,20 +339,21 @@ export default function FrequenciaPage() {
 
   const onNomeSearch = (value) => {
     setNomeFilter(value || '')
-    if (searchTimer) clearTimeout(searchTimer)
-    setSearchTimer(setTimeout(() => setFrequenciaNomesQ(value), 400))
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    searchTimerRef.current = setTimeout(() => setFrequenciaNomesQ(value), 400)
   }
 
+  const pageSize = frequenciaNomesPageSize || 50
+  const totalPages = Math.max(1, Math.ceil((frequenciaNomesTotal || 0) / pageSize))
+  const hasNextPage = frequenciaNomesPage < totalPages
+
   return (
-    <Box>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 2, mb: 3 }}>
-        <Box>
-          <Typography
-            variant="caption"
-            sx={{ display: 'block', mb: 0.75, color: 'grey.600', fontWeight: 600, letterSpacing: 0.4 }}
-          >
-            Ano
-          </Typography>
+    <div>
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+        <div>
+          <span className="block mb-2 text-slate-600 font-semibold text-xs">
+            Ano de referência
+          </span>
           <ToggleButtonGroup
             className="year-toggle"
             exclusive
@@ -390,14 +361,14 @@ export default function FrequenciaPage() {
             value={frequenciaYear}
             onChange={(_, v) => v && setFrequenciaYear(v)}
             sx={{
-              bgcolor: '#f1f5f9',
-              borderRadius: '10px',
+              bgcolor: COLORS.surface.subtle,
+              borderRadius: `${RADII.card}px`,
               p: '3px',
               gap: 0.5,
-              border: '1px solid #e2e8f0',
+              border: `1px solid ${COLORS.border.hairline}`,
               '& .MuiToggleButtonGroup-grouped': {
                 border: 0,
-                borderRadius: '8px !important',
+                borderRadius: `${RADII.control}px !important`,
                 mx: 0
               }
             }}
@@ -411,23 +382,24 @@ export default function FrequenciaPage() {
                   px: 2.25,
                   py: 0.75,
                   minWidth: 72,
-                  fontFamily: 'Outfit, Inter, sans-serif',
+                  minHeight: 36,
+                  fontFamily: TYPOGRAPHY.fonts.display,
+                  fontVariantNumeric: 'tabular-nums',
                   fontWeight: 700,
-                  fontSize: 14,
-                  color: '#64748b',
+                  fontSize: TYPOGRAPHY.scale.md,
+                  color: COLORS.text.muted,
                   bgcolor: 'transparent',
-                  transition: 'background-color .15s ease, color .15s ease, box-shadow .15s ease',
                   '&:hover': {
-                    bgcolor: 'rgba(30, 136, 229, 0.08)',
-                    color: '#0f172a'
+                    bgcolor: 'rgba(11, 79, 156, 0.08)',
+                    color: COLORS.text.primary
                   },
                   '&.Mui-selected': {
-                    bgcolor: 'primary.main',
-                    color: '#fff',
-                    boxShadow: '0 1px 3px rgba(13, 71, 161, 0.35)',
+                    bgcolor: COLORS.brand.navy,
+                    color: COLORS.text.inverse,
+                    boxShadow: SHADOWS.card,
                     '&:hover': {
-                      bgcolor: 'primary.dark',
-                      color: '#fff'
+                      bgcolor: COLORS.brand.blue,
+                      color: COLORS.text.inverse
                     }
                   }
                 }}
@@ -436,126 +408,207 @@ export default function FrequenciaPage() {
               </ToggleButton>
             ))}
           </ToggleButtonGroup>
-        </Box>
-        <Typography variant="caption" color="grey.600" sx={{ pb: 0.5 }}>
+        </div>
+        <span className="text-xs text-slate-600 pb-1 tabular-nums">
           Fonte: <strong>fatos_frequencia</strong> · Optimus{periodoLabel ? ` · ${periodoLabel}` : ''}
-        </Typography>
-      </Box>
+        </span>
+      </div>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 2, mb: 3 }}>
-        <KpiCard
-          label="Pessoas"
+      <MetricGrid>
+        <MetricCard
+          variant="simple"
+          title="Pessoas"
           value={formatMilhar(kpis.pessoas)}
-          Icon={GroupsIcon}
-          iconColor={HAPVIDA_PALETTE.bluePrimary}
-          iconBg="#EFF6FF"
-          badgeText="Quadro no período"
-          badgeBg="#EFF6FF"
-          badgeColor="#1D4ED8"
-          badgeBorder="#DBEAFE"
-          tip="Colaboradores distintos (matrícula) no período"
+          Icon={GroupsOutlinedIcon}
+          tone="blue"
+          metaText="Quadro distinto no período"
+          tip="Colaboradores distintos (matrícula) no período selecionado."
+          loading={kpisLoading}
         />
-        <KpiCard
-          label="ABS % Médio"
+        <MetricCard
+          variant="progress"
+          title="ABS % Médio"
           value={formatPct(kpis.abs_pct)}
           Icon={PercentIcon}
-          iconColor={HAPVIDA_PALETTE.orange}
-          iconBg="#FFF7ED"
-          badgeText="Taxa consolidada"
-          badgeBg="#FFF7ED"
-          badgeColor="#C2410C"
-          badgeBorder="#FFEDD5"
-          tip="Taxa diária do período: (dias de absenteísmo ÷ dias escalados) × 100"
+          tone="brandOrange"
+          featured
+          progress={{
+            pct: Math.min(100, Math.max(4, (Number(kpis.abs_pct || 0) / 15) * 100)),
+            barClass:
+              Number(kpis.abs_pct || 0) <= 5
+                ? 'bg-emerald-500'
+                : Number(kpis.abs_pct || 0) <= 10
+                  ? 'bg-amber-500'
+                  : 'bg-red-500'
+          }}
+          metaText="Taxa diária consolidada (meta ≤ 5,0%)"
+          metaClass={
+            Number(kpis.abs_pct || 0) <= 5
+              ? 'text-emerald-800'
+              : Number(kpis.abs_pct || 0) <= 10
+                ? 'text-amber-800'
+                : 'text-red-800'
+          }
+          tip="Taxa diária do período: (dias de absenteísmo ÷ dias escalados) × 100."
+          loading={kpisLoading}
         />
-        <KpiCard
-          label="Melhor Mês"
+        <MetricCard
+          variant="trend"
+          title="Melhor Mês"
           value={melhor ? `${melhor.label} (${formatPct(melhor.abs_pct)})` : '—'}
           Icon={TrendingDownIcon}
-          iconColor={HAPVIDA_PALETTE.greenEmerald}
-          iconBg="#ECFDF5"
-          badgeText="Menor índice"
-          badgeBg="#ECFDF5"
-          badgeColor="#047857"
-          badgeBorder="#A7F3D0"
-          tip="Mês com menor ABS % (taxa diária) no período"
+          tone="green"
+          trend={{
+            direction: 'down',
+            tone: 'good',
+            label: 'Menor índice no período'
+          }}
+          tip="Mês com menor ABS % (taxa diária) no período selecionado."
+          loading={kpisLoading}
         />
-        <KpiCard
-          label="Pior Mês"
+        <MetricCard
+          variant="trend"
+          title="Pior Mês"
           value={pior ? `${pior.label} (${formatPct(pior.abs_pct)})` : '—'}
           Icon={TrendingUpIcon}
-          iconColor={HAPVIDA_PALETTE.redCoral}
-          iconBg="#FEF2F2"
-          badgeText="Maior índice"
-          badgeBg="#FEF2F2"
-          badgeColor="#B91C1C"
-          badgeBorder="#FECACA"
-          tip="Mês com maior ABS % (taxa diária) no período"
+          tone="red"
+          trend={{
+            direction: 'up',
+            tone: 'bad',
+            label: 'Maior índice no período'
+          }}
+          tip="Mês com maior ABS % (taxa diária) no período selecionado."
+          loading={kpisLoading}
         />
-      </Box>
+      </MetricGrid>
 
-      <SectionCard title={`ABS Mensal — ${frequenciaYear || ''}`} sx={{ mb: 3 }}>
-        <Box sx={{ p: 2 }}>
-          {monthlyTableRows.length > 0 ? (
+      <SectionCard
+        title={`ABS Mensal — ${frequenciaYear || ''}`}
+        subtitle="Volume de colaboradores escalados vs. ocorrências de absenteísmo e taxa mensal (%)"
+        loading={Boolean(loading && monthlyTableRows.length > 0)}
+      >
+        <div className="p-4">
+          {loading && monthlyTableRows.length === 0 ? (
+            <SkeletonCard
+              variant="chart"
+              inline
+              heightClass="h-80"
+              ariaLabel="Carregando gráfico de ABS mensal"
+            />
+          ) : monthlyTableRows.length > 0 ? (
             <Chart type="line" height={350} options={monthlyChartOptions} series={monthlyChartSeries} />
           ) : (
-            <Box sx={{ textAlign: 'center', py: 8, color: 'grey.600' }}>
-              {loading ? 'Carregando gráfico...' : 'Sem dados mensais para o período.'}
-            </Box>
+            <div className={UI_CLASSES.emptyState}>
+              Sem dados mensais para o período selecionado.
+            </div>
           )}
-        </Box>
-      </SectionCard>
-
-      <SectionCard title="Comparativo ABS % entre anos" sx={{ mb: 3 }}>
-        <Box sx={{ p: 2 }}>
-          {compareChartSeries.length > 0 ? (
-            <Chart type="line" height={300} options={compareChartOptions} series={compareChartSeries} />
-          ) : (
-            <Box sx={{ textAlign: 'center', py: 8, color: 'grey.600' }}>Sem histórico multi-ano.</Box>
-          )}
-        </Box>
+        </div>
       </SectionCard>
 
       <SectionCard
-        title={
-          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-            <Box>
-              <Typography variant="subtitle1" fontWeight={700}>Histórico diário com nomes</Typography>
-              <Typography variant="caption" sx={{ opacity: 0.8 }}>
-                Um registro por pessoa/dia{periodoLabel ? ` · ${periodoLabel}` : ''}
-              </Typography>
-            </Box>
-            <Chip label={`${formatMilhar(frequenciaNomesTotal)} registros`} size="small" sx={{ ml: 'auto', bgcolor: 'white', color: 'primary.main', fontWeight: 700 }} />
-          </Box>
+        title="Comparativo ABS % entre anos"
+        subtitle="Evolução sazonal mês a mês por exercício"
+        loading={Boolean(loading && compareChartSeries.length > 0)}
+      >
+        <div className="p-4">
+          {loading && compareChartSeries.length === 0 ? (
+            <SkeletonCard
+              variant="chart"
+              inline
+              heightClass="h-72"
+              ariaLabel="Carregando comparativo anual de ABS"
+            />
+          ) : compareChartSeries.length > 0 ? (
+            <Chart type="line" height={300} options={compareChartOptions} series={compareChartSeries} />
+          ) : (
+            <div className={UI_CLASSES.emptyState}>
+              Sem histórico multi-ano disponível.
+            </div>
+          )}
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Histórico diário com nomes"
+        subtitle={`Um registro por pessoa/dia${periodoLabel ? ` · ${periodoLabel}` : ''}`}
+        loading={frequenciaNomesLoading}
+        action={
+          <PillBadge variant="info">
+            {formatMilhar(frequenciaNomesTotal)} registros
+          </PillBadge>
         }
       >
-        <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+        <div className="p-4 flex flex-col gap-3 border-b border-slate-100">
+          <div className="flex flex-wrap gap-3 items-center">
             <ToggleButtonGroup
               exclusive
               size="small"
               value={frequenciaNomesTipo}
               onChange={(_, v) => v && setFrequenciaNomesTipo(v)}
+              sx={{
+                bgcolor: COLORS.surface.subtle,
+                borderRadius: `${RADII.control}px`,
+                p: '3px',
+                gap: 0.5,
+                border: `1px solid ${COLORS.border.hairline}`,
+                '& .MuiToggleButtonGroup-grouped': {
+                  border: 0,
+                  borderRadius: `${RADII.badge}px !important`,
+                  mx: 0
+                }
+              }}
             >
               {TIPO_OPTIONS.map(o => (
-                <ToggleButton key={o.value} value={o.value} sx={{ textTransform: 'none' }}>{o.label}</ToggleButton>
+                <ToggleButton
+                  key={o.value}
+                  value={o.value}
+                  sx={{
+                    textTransform: 'none',
+                    px: 1.5,
+                    minHeight: 34,
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    color: COLORS.text.muted,
+                    whiteSpace: 'nowrap',
+                    '&.Mui-selected': {
+                      bgcolor: COLORS.surface.card,
+                      color: COLORS.brand.navy,
+                      boxShadow: SHADOWS.card,
+                      '&:hover': { bgcolor: COLORS.surface.card }
+                    }
+                  }}
+                >
+                  {o.label}
+                </ToggleButton>
               ))}
             </ToggleButtonGroup>
+
             <TextField
               size="small"
               value={nomeFilter}
               onChange={(e) => onNomeSearch(e.target.value)}
               placeholder="Buscar nome, segmento ou frequência..."
-              sx={{ flex: 1, minWidth: 220 }}
-              InputProps={{ endAdornment: <SearchIcon fontSize="small" color="action" /> }}
+              sx={{ flex: 1, minWidth: 230 }}
+              slotProps={{
+                input: {
+                  endAdornment: <SearchIcon fontSize="small" className="text-slate-500" />
+                }
+              }}
             />
+
             {hasNomesFilters && (
-              <Button startIcon={<FilterAltOffIcon />} onClick={() => { setNomeFilter(''); clearFrequenciaNomesFilters() }} sx={{ textTransform: 'none' }}>
+              <Button
+                variant="outlined"
+                startIcon={<FilterAltOffIcon />}
+                onClick={() => { setNomeFilter(''); clearFrequenciaNomesFilters() }}
+                sx={{ minHeight: 40 }}
+              >
                 Limpar filtros
               </Button>
             )}
-          </Box>
+          </div>
 
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 1 }}>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-3">
             <TextField
               select
               size="small"
@@ -592,33 +645,56 @@ export default function FrequenciaPage() {
                 renderInput={(params) => <TextField {...params} label={f.label} />}
               />
             ))}
-          </Box>
-        </Box>
+          </div>
+        </div>
 
         <DataTable
           columns={NOMES_COLUMNS}
           rows={nomesRows}
           rowKey="rowKey"
           loading={frequenciaNomesLoading}
-          defaultRowsPerPage={20}
+          hidePagination
+          densityToggle
           renderCell={(col, row, raw) => {
-            if (col.field === 'data') return <Box component="span" sx={{ fontWeight: 500 }}>{formatDateBr(row.data)}</Box>
-            if (col.field === 'Frequencia') {
-              return <Chip size="small" color={freqChipColor(row.Frequencia, row.absenteismo)} label={row.Frequencia} />
+            if (col.field === 'data') {
+              return <span className="font-medium text-slate-700">{formatDateBr(row.data)}</span>
             }
-            return raw ?? ''
+            if (col.field === 'Frequencia') {
+              const chipTone = freqChipColor(row.Frequencia, row.absenteismo)
+              const variant = FREQ_BADGE_VARIANT[chipTone] || 'neutral'
+              return <PillBadge variant={variant}>{row.Frequencia || '-'}</PillBadge>
+            }
+            return raw ?? '-'
           }}
         />
-        {frequenciaNomesTotal > nomesRows.length && (
-          <Box sx={{ p: 1, display: 'flex', justifyContent: 'center', gap: 1 }}>
-            <Button size="small" disabled={frequenciaNomesPage <= 1} onClick={() => setFrequenciaNomesPage(frequenciaNomesPage - 1)}>Anterior</Button>
-            <Typography variant="caption" sx={{ alignSelf: 'center' }}>
-              Página {frequenciaNomesPage} · {formatMilhar(frequenciaNomesTotal)} total
-            </Typography>
-            <Button size="small" onClick={() => setFrequenciaNomesPage(frequenciaNomesPage + 1)}>Próxima</Button>
-          </Box>
+        {frequenciaNomesTotal > 0 && (
+          <div className="px-4 py-3 flex justify-between items-center flex-wrap gap-3 border-t border-slate-200 bg-slate-50">
+            <span className="text-xs text-slate-600 tabular-nums">
+              Página <strong>{frequenciaNomesPage}</strong> de <strong>{totalPages}</strong> · {formatMilhar(frequenciaNomesTotal)} registros no período
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<NavigateBeforeIcon fontSize="small" />}
+                disabled={frequenciaNomesPage <= 1 || frequenciaNomesLoading}
+                onClick={() => setFrequenciaNomesPage(frequenciaNomesPage - 1)}
+              >
+                Anterior
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                endIcon={<NavigateNextIcon fontSize="small" />}
+                disabled={!hasNextPage || frequenciaNomesLoading}
+                onClick={() => setFrequenciaNomesPage(frequenciaNomesPage + 1)}
+              >
+                Próxima
+              </Button>
+            </div>
+          </div>
         )}
       </SectionCard>
-    </Box>
+    </div>
   )
 }

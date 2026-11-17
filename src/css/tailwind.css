@@ -1,1 +1,32 @@
 @import "tailwindcss";
+@config "../../tailwind.config.js";
+
+@theme {
+  /* Hapvida NotreDame Intermédica Brand Tokens */
+  --color-hapvida-navy: #002D62;
+  --color-hapvida-navy-dark: #001E42;
+  --color-hapvida-blue: #0B4F9C;
+  --color-hapvida-orange: #FF6600;
+
+  /* Surface & Border Tokens */
+  --color-surface-canvas: #f8fafc;
+  --color-surface-card: #ffffff;
+  --color-surface-subtle: #f1f5f9;
+  --color-surface-zebra: #fcfdfe;
+  --color-border-hairline: #e2e8f0;
+  --color-border-input: #cbd5e1;
+
+  /* Typography Stacks */
+  --font-display: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Base 4px / 8px Spacing Grid */
+  --spacing: 4px;
+
+  /* Radius Scale */
+  --radius-badge: 6px;
+  --radius-control: 8px;
+  --radius-card: 10px;
+  --radius-popover: 14px;
+}

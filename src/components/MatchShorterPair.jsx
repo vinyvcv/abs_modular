@@ -1,20 +1,16 @@
 import { forwardRef, useLayoutEffect, useRef, useState } from 'react'
-import { Box, Card, CardContent, Typography, useMediaQuery } from '@mui/material'
+import { Box, useMediaQuery } from '@mui/material'
+import { UI_CLASSES } from '../theme'
 
-/**
- * Card do par. Quando `height` é setado, o corpo rola por dentro
- * (mesmo truque do Quasar: column + col scroll).
- */
 const PairCard = forwardRef(function PairCard(
-  { title, children, height, scrollBody = false },
+  { title, action, children, height, scrollBody = false },
   ref
 ) {
   const locked = typeof height === 'number' && height > 0
 
   return (
-    <Card
+    <section
       ref={ref}
-      variant="outlined"
       style={
         locked
           ? {
@@ -24,45 +20,22 @@ const PairCard = forwardRef(function PairCard(
             }
           : undefined
       }
-      sx={{
-        mb: 0,
-        width: '100%',
-        minWidth: 0,
-        display: 'flex',
-        flexDirection: 'column'
-      }}
+      className={`${UI_CLASSES.cardSurface} w-full min-w-0 flex flex-col`}
     >
-      <Box
-        sx={{
-          bgcolor: 'primary.main',
-          color: 'white',
-          px: 2,
-          py: 0.75,
-          flex: '0 0 auto'
-        }}
-      >
-        <Typography variant="subtitle1" fontWeight={700}>
-          {title}
-        </Typography>
-      </Box>
-      <CardContent
-        sx={{
-          p: 0,
-          '&:last-child': { pb: 0 },
-          ...(scrollBody && locked
-            ? {
-                // flex-basis 0 + height 0: obriga o corpo a caber no card
-                flex: '1 1 0%',
-                minHeight: 0,
-                height: 0,
-                overflow: 'auto'
-              }
-            : { flex: '0 0 auto' })
-        }}
+      <div className={`${UI_CLASSES.cardHeader} min-h-card-head flex-none`}>
+        <h3 className={UI_CLASSES.cardHeaderTitle}>{title}</h3>
+        {action && <div className="shrink-0">{action}</div>}
+      </div>
+      <div
+        className={
+          scrollBody && locked
+            ? 'flex-1 min-h-0 h-0 overflow-auto'
+            : 'flex-none'
+        }
       >
         {children}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   )
 })
 
@@ -75,11 +48,12 @@ export function MatchShorterPair({
   deps = [],
   leftTitle,
   rightTitle,
+  leftAction,
+  rightAction,
   left,
   right,
   sx
 }) {
-  // Quasar usava 1024; manter lado a lado um pouco antes
   const isDesktop = useMediaQuery('(min-width:900px)', { defaultMatches: true })
   const active = enabled ?? isDesktop
   const rightRef = useRef(null)
@@ -95,7 +69,6 @@ export function MatchShorterPair({
     if (!el) return undefined
 
     const measure = () => {
-      // offsetHeight ignora transform/zoom de getBoundingClientRect
       const h = el.offsetHeight || Math.round(el.getBoundingClientRect().height)
       if (h > 0) setPairHeight((prev) => (prev === h ? prev : h))
     }
@@ -118,28 +91,22 @@ export function MatchShorterPair({
 
   if (!active) {
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3, ...sx }}>
-        <PairCard title={leftTitle}>{left}</PairCard>
-        <PairCard title={rightTitle}>{right}</PairCard>
+      <Box className="flex flex-col gap-4 mb-6" sx={sx}>
+        <PairCard title={leftTitle} action={leftAction}>{left}</PairCard>
+        <PairCard title={rightTitle} action={rightAction}>{right}</PairCard>
       </Box>
     )
   }
 
   return (
     <Box
-      sx={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 2fr) minmax(240px, 1fr)',
-        gap: 2,
-        alignItems: 'start',
-        mb: 3,
-        ...sx
-      }}
+      className="grid grid-cols-[minmax(0,2fr)_minmax(240px,1fr)] gap-4 items-start mb-6"
+      sx={sx}
     >
-      <PairCard title={leftTitle} height={pairHeight} scrollBody>
+      <PairCard title={leftTitle} action={leftAction} height={pairHeight} scrollBody>
         {left}
       </PairCard>
-      <PairCard ref={rightRef} title={rightTitle}>
+      <PairCard ref={rightRef} title={rightTitle} action={rightAction}>
         {right}
       </PairCard>
     </Box>

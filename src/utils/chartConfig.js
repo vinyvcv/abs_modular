@@ -1,34 +1,36 @@
+import { COLORS, RADII, SHADOWS, TYPOGRAPHY } from '../theme'
+
 export const HAPVIDA_PALETTE = {
-  blueNavy: '#002D62',
-  bluePrimary: '#0B4F9C',
-  orange: '#FF6600',
-  greenEmerald: '#10B981',
-  redCoral: '#EF4444',
-  amber: '#F59E0B',
-  cyan: '#06B6D4',
-  purple: '#8B5CF6',
-  slate900: '#0F172A',
-  slate700: '#334155',
-  slate500: '#64748B',
-  slate400: '#94A3B8',
-  slate200: '#E2E8F0',
-  slate100: '#F1F5F9',
-  white: '#FFFFFF'
+  blueNavy: COLORS.brand.navy,
+  bluePrimary: COLORS.brand.blue,
+  orange: COLORS.brand.orange,
+  greenEmerald: COLORS.semantic.successEmerald,
+  redCoral: COLORS.semantic.redCoral,
+  amber: COLORS.semantic.amber,
+  cyan: COLORS.semantic.cyan,
+  purple: COLORS.semantic.purple,
+  slate900: COLORS.text.primary,
+  slate700: COLORS.text.secondary,
+  slate500: COLORS.text.subtle,
+  slate400: COLORS.text.placeholder,
+  slate200: COLORS.border.hairline,
+  slate100: COLORS.surface.subtle,
+  white: COLORS.surface.card
 }
 
 /**
- * Cria um tooltip HTML corporativo Hapvida para ApexCharts
+ * Tooltip HTML corporativo Hapvida para ApexCharts com fonte tabular e contraste AA
  */
 export function buildCustomTooltip({ headerTitle, items = [] }) {
   const itemsHtml = items
     .map(
       (item) => `
-    <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 6px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 6px;">
       <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="width: 9px; height: 9px; border-radius: 50%; background-color: ${item.color}; display: inline-block;"></span>
-        <span style="font-size: 12px; color: #475569; font-weight: 500;">${item.label}</span>
+        <span style="width: 8px; height: 8px; border-radius: 50%; background-color: ${item.color}; display: inline-block; flex-shrink: 0;"></span>
+        <span style="font-size: 12px; color: ${COLORS.text.muted}; font-weight: 500;">${item.label}</span>
       </div>
-      <span style="font-size: 12px; font-weight: 700; color: #0f172a; font-family: 'Outfit', sans-serif;">
+      <span style="font-size: 12px; font-weight: 700; color: ${COLORS.text.primary}; font-family: ${TYPOGRAPHY.fonts.mono}; font-variant-numeric: tabular-nums; text-align: right;">
         ${item.value}
       </span>
     </div>
@@ -38,21 +40,21 @@ export function buildCustomTooltip({ headerTitle, items = [] }) {
 
   return `
     <div style="
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+      background: ${COLORS.surface.card};
+      border: 1px solid ${COLORS.border.hairline};
+      border-radius: ${RADII.control}px;
+      box-shadow: ${SHADOWS.popover};
       padding: 10px 14px;
-      min-width: 170px;
-      font-family: 'Inter', sans-serif;
+      min-width: 192px;
+      font-family: ${TYPOGRAPHY.fonts.sans};
     ">
       <div style="
         font-size: 12px;
         font-weight: 700;
-        color: #002D62;
-        border-bottom: 1px solid #f1f5f9;
+        color: ${COLORS.brand.navy};
+        border-bottom: 1px solid ${COLORS.surface.subtle};
         padding-bottom: 6px;
-        font-family: 'Outfit', sans-serif;
+        font-family: ${TYPOGRAPHY.fonts.display};
       ">
         ${headerTitle}
       </div>
@@ -62,18 +64,62 @@ export function buildCustomTooltip({ headerTitle, items = [] }) {
 }
 
 /**
+ * Linha de referência da meta operacional de ABS (padrão <= 5,0%) para eixos secundários (%)
+ */
+export function buildAbsTargetAnnotation(target = 5, yAxisIndex = 1) {
+  return {
+    yaxis: [
+      {
+        y: target,
+        yAxisIndex,
+        borderColor: COLORS.brand.orange,
+        strokeDashArray: 4,
+        borderWidth: 1.5,
+        opacity: 0.75,
+        label: {
+          borderColor: COLORS.brand.orange,
+          borderWidth: 1,
+          borderRadius: 4,
+          offsetY: -4,
+          style: {
+            color: COLORS.brand.orange,
+            background: COLORS.surface.card,
+            fontSize: '10px',
+            fontWeight: 700,
+            fontFamily: TYPOGRAPHY.fonts.mono,
+            padding: { left: 6, right: 6, top: 2, bottom: 2 }
+          },
+          text: `Meta ≤ ${String(target).replace('.', ',')}%`
+        }
+      }
+    ]
+  }
+}
+
+/**
+ * Realça visualmente a categoria selecionada em gráficos clicáveis, atenuando as demais
+ */
+export function getInteractiveBarColor(baseColor, categories, selectedCategory, dataPointIndex) {
+  if (!selectedCategory || !Array.isArray(categories)) return baseColor
+  const cat = String(categories[dataPointIndex] ?? '').trim().toLowerCase()
+  const sel = String(selectedCategory).trim().toLowerCase()
+  if (cat === sel) return baseColor
+  return `${baseColor}38`
+}
+
+/**
  * Opções padrão compartilhadas para gráficos ApexCharts do Painel Hapvida
  */
 export const baseChartOptions = {
   chart: {
-    fontFamily: 'Inter, Outfit, sans-serif',
+    fontFamily: TYPOGRAPHY.fonts.sans,
     animations: {
       enabled: true,
       easing: 'easeinout',
-      speed: 600,
+      speed: 380,
       dynamicAnimation: {
         enabled: true,
-        speed: 350
+        speed: 250
       }
     },
     toolbar: {
@@ -90,8 +136,9 @@ export const baseChartOptions = {
     }
   },
   grid: {
-    borderColor: '#f1f5f9',
+    borderColor: COLORS.surface.subtle,
     strokeDashArray: 4,
+    padding: { left: 8, right: 8 },
     xaxis: {
       lines: {
         show: false
@@ -103,23 +150,53 @@ export const baseChartOptions = {
       }
     }
   },
+  plotOptions: {
+    bar: {
+      borderRadius: 4,
+      borderRadiusApplication: 'end'
+    }
+  },
+  states: {
+    hover: {
+      filter: { type: 'darken', value: 0.92 }
+    },
+    active: {
+      filter: { type: 'none' }
+    }
+  },
   legend: {
     position: 'top',
-    horizontalAlign: 'center',
+    horizontalAlign: 'left',
     fontSize: '12px',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: TYPOGRAPHY.fonts.sans,
     fontWeight: 600,
     labels: {
-      colors: '#475569'
+      colors: COLORS.text.muted
     },
     markers: {
-      radius: 4,
+      radius: 3,
       width: 10,
       height: 10
     },
     itemMargin: {
-      horizontal: 12,
+      horizontal: 14,
       vertical: 6
     }
   }
+}
+
+export const chartDataLabelStyle = {
+  fontSize: '11px',
+  fontFamily: TYPOGRAPHY.fonts.mono,
+  fontWeight: 700,
+  colors: [COLORS.text.primary]
+}
+
+export const chartDataLabelBg = {
+  enabled: true,
+  foreColor: COLORS.surface.card,
+  borderRadius: 4,
+  padding: 4,
+  opacity: 0.94,
+  borderColor: COLORS.brand.orange
 }

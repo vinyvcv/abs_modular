@@ -1,61 +1,57 @@
 import { useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
-import { Box, Button, Chip, FormControlLabel, Switch, Typography } from '@mui/material'
+import { Button, Chip } from '@mui/material'
 import DownloadIcon from '@mui/icons-material/Download'
 import FilterAltOffIcon from '@mui/icons-material/FilterAltOff'
 import KpiCards from '../components/KpiCards'
 import { DataTable, SectionCard } from '../components/DataTable'
 import { MatchShorterPair } from '../components/MatchShorterPair'
+import OperatorsDetailSection from '../components/OperatorsDetailSection'
+import SkeletonCard from '../components/ui/SkeletonCard'
+import { renderResumoCell, renderSituacaoCell } from '../components/TableCells'
 import { useDashboardStore } from '../stores/dashboard'
-import { exportMultipleTables, exportTable } from '../utils/export'
-import { HAPVIDA_PALETTE, baseChartOptions, buildCustomTooltip } from '../utils/chartConfig'
+import { exportMultipleTables } from '../utils/export'
 import {
-  OPERADOR_COLUMNS,
-  SITUACAO_COLUMNS,
-  formatAbsPercentComma,
-  formatMilhar,
-  formatSituacaoPercent,
-  formatTime,
-  formatTipoLoginText,
-  getAbsColorStyle,
-  getStatusStyle,
-  getTipoLoginStyle
-} from '../utils/format'
+  HAPVIDA_PALETTE,
+  baseChartOptions,
+  buildAbsTargetAnnotation,
+  buildCustomTooltip,
+  chartDataLabelBg,
+  chartDataLabelStyle,
+  getInteractiveBarColor
+} from '../utils/chartConfig'
+import { TYPOGRAPHY } from '../theme'
+import { SITUACAO_COLUMNS } from '../utils/format'
 
 const resumoColumns = [
   { field: 'Segmento', label: 'Coord. Operação', align: 'left' },
-  { field: 'Total', label: 'Total', align: 'center' },
-  { field: 'Previstos', label: 'Previstos', align: 'center' },
-  { field: 'Escalados', label: 'Escalados', align: 'center' },
-  { field: 'Faltas', label: 'Faltas', align: 'center' },
-  { field: 'ABS', label: 'ABS%', align: 'center' }
+  { field: 'Total', label: 'Total', align: 'right', numeric: true },
+  { field: 'Previstos', label: 'Previstos', align: 'right', numeric: true },
+  { field: 'Escalados', label: 'Escalados', align: 'right', numeric: true },
+  { field: 'Faltas', label: 'Faltas', align: 'right', numeric: true },
+  { field: 'ABS', label: 'ABS%', align: 'right', numeric: true }
 ]
+
+const situacaoAlignedColumns = SITUACAO_COLUMNS.map((c) =>
+  c.field === 'Situação' ? { ...c, align: 'left' } : { ...c, align: 'right', numeric: true }
+)
 
 export default function CoordinatorPage() {
   const loading = useDashboardStore(s => s.loading)
   const data = useDashboardStore(s => s.coordenadorData)
-  const [apenasAtivos, setApenasAtivos] = useState(false)
   const [selectedCoord, setSelectedCoord] = useState(null)
 
   const resumoRows = data.resumoSegmento || []
   const situacoesRows = data.situacoes || []
   const operadores = data.operadores || []
 
-  // Filtragem dos operadores por status e coordenador selecionado
   const operadoresFiltered = useMemo(() => {
-    let result = operadores
-    if (apenasAtivos) {
-      result = result.filter(op => (op.status || '').toUpperCase().trim() === 'PRESENTE')
-    }
-    if (selectedCoord) {
-      result = result.filter(op =>
-        (op.nome_coordenador_op || '').trim().toLowerCase() === selectedCoord.trim().toLowerCase()
-      )
-    }
-    return result
-  }, [apenasAtivos, selectedCoord, operadores])
+    if (!selectedCoord) return operadores
+    return operadores.filter(op =>
+      (op.nome_coordenador_op || '').trim().toLowerCase() === selectedCoord.trim().toLowerCase()
+    )
+  }, [selectedCoord, operadores])
 
-  // --- Gráfico Interativo: Performance por Coordenação de Operação ---
   const coordChartData = useMemo(() => {
     const validRows = resumoRows.filter(
       r => r.Segmento && !String(r.Segmento).toUpperCase().includes('TOTAL')
@@ -97,40 +93,36 @@ export default function CoordinatorPage() {
         }
       },
       stroke: { width: [0, 0, 3], curve: 'smooth' },
-      colors: [HAPVIDA_PALETTE.bluePrimary, HAPVIDA_PALETTE.redCoral, HAPVIDA_PALETTE.orange],
+      colors: [
+        ({ dataPointIndex }) =>
+          getInteractiveBarColor(HAPVIDA_PALETTE.bluePrimary, coordChartData.categories, selectedCoord, dataPointIndex),
+        ({ dataPointIndex }) =>
+          getInteractiveBarColor(HAPVIDA_PALETTE.redCoral, coordChartData.categories, selectedCoord, dataPointIndex),
+        HAPVIDA_PALETTE.orange
+      ],
+      annotations: buildAbsTargetAnnotation(5, 1),
       plotOptions: {
         bar: {
           columnWidth: '42%',
-          borderRadius: 4
+          borderRadius: 4,
+          borderRadiusApplication: 'end'
         }
       },
       dataLabels: {
         enabled: true,
         enabledOnSeries: [2],
         formatter: (val) => `${Number(val).toFixed(1)}%`,
-        style: {
-          fontSize: '11px',
-          fontFamily: 'Outfit, sans-serif',
-          fontWeight: 700,
-          colors: [HAPVIDA_PALETTE.slate900]
-        },
-        background: {
-          enabled: true,
-          foreColor: '#ffffff',
-          borderRadius: 4,
-          padding: 4,
-          opacity: 0.9,
-          borderColor: HAPVIDA_PALETTE.orange
-        }
+        style: chartDataLabelStyle,
+        background: chartDataLabelBg
       },
       xaxis: {
         categories: coordChartData.categories,
         labels: {
-          rotate: -25,
+          rotate: -20,
           rotateAlways: coordChartData.categories.length > 3,
           style: {
             fontSize: '11px',
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: TYPOGRAPHY.fonts.sans,
             fontWeight: 600,
             colors: HAPVIDA_PALETTE.slate500
           }
@@ -141,7 +133,7 @@ export default function CoordinatorPage() {
       yaxis: [
         {
           title: {
-            text: 'Volume de Colaboradores',
+            text: 'Colaboradores',
             style: { color: HAPVIDA_PALETTE.slate500, fontWeight: 600, fontSize: '11px' }
           },
           labels: {
@@ -164,7 +156,7 @@ export default function CoordinatorPage() {
         }
       ],
       tooltip: {
-        custom: ({ series, seriesIndex, dataPointIndex }) => {
+        custom: ({ series, dataPointIndex }) => {
           const coordName = coordChartData.categories[dataPointIndex] || ''
           const pres = series[0]?.[dataPointIndex] ?? 0
           const falt = series[1]?.[dataPointIndex] ?? 0
@@ -183,163 +175,91 @@ export default function CoordinatorPage() {
         }
       }
     }
-  }, [coordChartData])
-
-  const renderResumo = (col, row, raw) => {
-    const isTotal = row.Segmento === 'TOTAL GERAL'
-    const bold = isTotal ? { fontWeight: 700, bgcolor: 'grey.200' } : {}
-    if (col.field === 'ABS') {
-      return <Box component="span" sx={{ ...getAbsColorStyle(raw), px: 0.5 }}>{formatAbsPercentComma(raw)}</Box>
-    }
-    if (['Total', 'Previstos', 'Escalados', 'Faltas'].includes(col.field)) {
-      return <Box component="span" sx={bold}>{formatMilhar(raw)}</Box>
-    }
-    return <Box component="span" sx={bold}>{raw}</Box>
-  }
-
-  const renderSituacao = (col, row, raw) => {
-    const isTotal = row.Situação === 'TOTAL'
-    const bold = isTotal ? { fontWeight: 700, bgcolor: 'grey.200' } : {}
-    if (col.field === 'Pct') return <Box component="span" sx={bold}>{formatSituacaoPercent(row.Pct)}</Box>
-    if (col.field === 'Qtd') return <Box component="span" sx={bold}>{formatMilhar(raw)}</Box>
-    return <Box component="span" sx={bold}>{raw}</Box>
-  }
-
-  const renderOperador = (col, row, raw) => {
-    if (col.field === 'status') {
-      return <Box component="span" sx={getStatusStyle(raw)}>{raw ? String(raw).replace(/_/g, ' ') : ''}</Box>
-    }
-    if (col.field === 'tipoLogin') {
-      return <Box component="span" sx={getTipoLoginStyle(raw)}>{formatTipoLoginText(raw)}</Box>
-    }
-    if (col.field === 'entradaReal') {
-      return <Box component="span" sx={getTipoLoginStyle(row.tipoLogin)}>{formatTime(raw)}</Box>
-    }
-    if (col.field === 'pausa_atual') {
-      if (!raw) {
-        if (row.status === 'PRESENTE') {
-          return <Box component="span" sx={{ color: '#137333', fontSize: '0.78rem', fontWeight: 600 }}>🟢 Em Atendimento</Box>
-        }
-        return <Box component="span" sx={{ color: '#999', fontSize: '0.78rem' }}>-</Box>
-      }
-      return (
-        <Box component="span" sx={{ bgcolor: '#fef3c7', color: '#b45309', px: 1, py: 0.25, borderRadius: 1, fontWeight: 700, fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: 0.5, border: '1px solid #fde68a' }}>
-          ⏸ {raw}
-        </Box>
-      )
-    }
-    if (col.field === 'pausas_resumo') {
-      return <Box component="span" sx={{ color: '#4b5563', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{raw ?? '-'}</Box>
-    }
-    return raw ?? ''
-  }
+  }, [coordChartData, selectedCoord])
 
   return (
-    <Box>
-      <KpiCards kpis={data.kpis || {}} />
+    <div>
+      <KpiCards kpis={data.kpis || {}} loading={loading} />
 
-      {/* Gráfico Interativo: Performance por Coordenação de Operação */}
-      {coordChartData.categories.length > 0 && (
+      {loading && coordChartData.categories.length === 0 ? (
+        <SkeletonCard
+          variant="chart"
+          showHeader
+          heightClass="h-80"
+          ariaLabel="Carregando gráfico de performance por coordenação de operação"
+        />
+      ) : coordChartData.categories.length > 0 && (
         <SectionCard
           title="Performance de ABS e Presença por Coord. Operação"
           subtitle="Clique na barra de qualquer coordenação para filtrar os operadores na tabela abaixo"
-          sx={{ mb: 4 }}
+          loading={loading}
+          action={
+            selectedCoord && (
+              <Chip
+                color="primary"
+                variant="outlined"
+                size="small"
+                label={`Filtro: ${selectedCoord}`}
+                onDelete={() => setSelectedCoord(null)}
+                deleteIcon={<FilterAltOffIcon />}
+                sx={{ fontWeight: 600 }}
+              />
+            )
+          }
         >
-          <Box sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                💡 Dica: Clique na barra para filtrar a lista detalhada de colaboradores.
-              </Typography>
-              {selectedCoord && (
-                <Chip
-                  color="primary"
-                  variant="outlined"
-                  size="small"
-                  label={`Filtro Ativo: ${selectedCoord}`}
-                  onDelete={() => setSelectedCoord(null)}
-                  deleteIcon={<FilterAltOffIcon />}
-                  sx={{ fontWeight: 600 }}
-                />
-              )}
-            </Box>
+          <div className="p-4">
             <Chart type="line" height={360} options={coordChartOptions} series={coordChartSeries} />
-          </Box>
+          </div>
         </SectionCard>
       )}
 
-      <Box sx={{ mb: 1 }}>
-        <Button
-          variant="contained"
-          color="success"
-          startIcon={<DownloadIcon />}
-          sx={{ textTransform: 'none' }}
-          onClick={() => exportMultipleTables([
-            { title: 'Resumo por Coord. Operação', rows: data.resumoSegmento || [], columns: resumoColumns },
-            { title: 'Situações', rows: data.situacoes || [], columns: SITUACAO_COLUMNS }
-          ], 'resumo_coordenador_op.csv')}
-        >
-          Exportar resumos combinados
-        </Button>
-      </Box>
-
       <MatchShorterPair
-        deps={[data.resumoSegmento, data.situacoes, loading]}
+        deps={[resumoRows, situacoesRows, loading]}
         leftTitle="Resumo por Coord. Operação"
         rightTitle="Situações"
-        sx={{ mb: 4 }}
+        rightAction={
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
+            disabled={!resumoRows.length && !situacoesRows.length}
+            onClick={() => exportMultipleTables([
+              { title: 'Resumo por Coord. Operação', rows: resumoRows, columns: resumoColumns },
+              { title: 'Situações', rows: situacoesRows, columns: situacaoAlignedColumns }
+            ], 'resumo_coordenador_op.csv')}
+          >
+            Exportar CSV
+          </Button>
+        }
         left={
           <DataTable
             columns={resumoColumns}
-            rows={data.resumoSegmento || []}
+            rows={resumoRows}
             rowKey="Segmento"
             loading={loading}
             hidePagination
-            renderCell={renderResumo}
+            renderCell={(col, row, raw) => renderResumoCell(col, row, raw, { useComma: true })}
           />
         }
         right={
           <DataTable
-            columns={SITUACAO_COLUMNS}
-            rows={data.situacoes || []}
+            columns={situacaoAlignedColumns}
+            rows={situacoesRows}
             rowKey="Situação"
             loading={loading}
             hidePagination
-            renderCell={renderSituacao}
+            renderCell={renderSituacaoCell}
           />
         }
       />
 
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1.5 }}>
-        <Button
-          variant="contained"
-          color="success"
-          startIcon={<DownloadIcon />}
-          sx={{ textTransform: 'none' }}
-          onClick={() => exportTable(operadoresFiltered, OPERADOR_COLUMNS, 'detalhamento_operadores_coordenador.csv')}
-        >
-          Exportar solicitações filtradas
-        </Button>
-
-        {selectedCoord && (
-          <Chip
-            color="primary"
-            size="medium"
-            label={`Coordenação: ${selectedCoord} (${operadoresFiltered.length} operadores)`}
-            onDelete={() => setSelectedCoord(null)}
-            sx={{ fontWeight: 600 }}
-          />
-        )}
-
-        <FormControlLabel
-          sx={{ ml: 'auto' }}
-          control={<Switch checked={apenasAtivos} onChange={(e) => setApenasAtivos(e.target.checked)} />}
-          label={<Box component="span" sx={{ fontWeight: 700 }}>Apenas Ativos</Box>}
-        />
-      </Box>
-
-      <SectionCard title="Detalhamento de Operadores" sx={{ mb: 6 }}>
-        <DataTable columns={OPERADOR_COLUMNS} rows={operadoresFiltered} rowKey="matricula" loading={loading} renderCell={renderOperador} />
-      </SectionCard>
-    </Box>
+      <OperatorsDetailSection
+        operadores={operadoresFiltered}
+        loading={loading}
+        exportFilename="detalhamento_operadores_coordenador.csv"
+        filterChipLabel={selectedCoord ? `Coordenação: ${selectedCoord}` : undefined}
+        onClearFilterChip={selectedCoord ? () => setSelectedCoord(null) : undefined}
+      />
+    </div>
   )
 }

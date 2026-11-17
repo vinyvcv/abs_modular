@@ -1,5 +1,6 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
+import { CssBaseline, ThemeProvider } from '@mui/material'
+import { muiTheme } from './theme'
 import MainLayout from './layouts/MainLayout'
 import SegmentPage from './pages/SegmentPage'
 import CoordinatorAtPage from './pages/CoordinatorAtPage'
@@ -12,23 +13,9 @@ import ErrorNotFound from './pages/ErrorNotFound'
 import './css/tailwind.css'
 import './css/app.scss'
 
-const theme = createTheme({
-  palette: {
-    primary: { main: '#093b8f' },
-    success: { main: '#2e7d32' },
-    error: { main: '#c62828' }
-  },
-  typography: {
-    fontFamily: "'Inter', 'Roboto', sans-serif",
-    h4: { fontFamily: "'Outfit', 'Inter', sans-serif" },
-    h5: { fontFamily: "'Outfit', 'Inter', sans-serif" },
-    h6: { fontFamily: "'Outfit', 'Inter', sans-serif" }
-  }
-})
-
 export default function App() {
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={muiTheme}>
       <CssBaseline />
       <HashRouter>
         <Routes>

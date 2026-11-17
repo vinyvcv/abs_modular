@@ -2,7 +2,7 @@ const http = require('http')
 const fs = require('fs')
 const path = require('path')
 
-const port = Number(process.env.PORT || 8501)
+const port = Number(process.env.PORT || 3000)
 // Vite React build → dist/  (Quasar era dist/spa)
 const rootCandidates = [
   path.join(__dirname, 'dist'),
