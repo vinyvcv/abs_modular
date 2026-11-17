@@ -34,6 +34,7 @@ export default function SupervisorPage() {
   const loading = useDashboardStore(s => s.loading)
   const data = useDashboardStore(s => s.supervisorData)
   const [selectedSupervisor, setSelectedSupervisor] = useState(null)
+  const [chartViewMode, setChartViewMode] = useState('topAbs')
 
   const resumoSupervisor = data.resumoSupervisor || []
   const operadores = data.operadores || []
@@ -46,19 +47,34 @@ export default function SupervisorPage() {
   }, [selectedSupervisor, operadores])
 
   const supervisorChartData = useMemo(() => {
-    const validRows = resumoSupervisor.filter(
+    let validRows = resumoSupervisor.filter(
       r => r.Supervisor && !String(r.Supervisor).toUpperCase().includes('TOTAL')
     )
-    const sorted = [...validRows].sort((a, b) => Number(b.Escalados || 0) - Number(a.Escalados || 0))
+
+    if (chartViewMode === 'topAbs') {
+      validRows = validRows
+        .filter(r => Number(r.Faltas || 0) > 0 || Number(r.ABS || 0) > 0)
+        .sort((a, b) => Number(b.ABS || 0) - Number(a.ABS || 0))
+        .slice(0, 12)
+    } else if (chartViewMode === 'topVolume') {
+      validRows = [...validRows]
+        .sort((a, b) => Number(b.Escalados || 0) - Number(a.Escalados || 0))
+        .slice(0, 12)
+    } else {
+      validRows = validRows
+        .filter(r => Number(r.Faltas || 0) > 0)
+        .sort((a, b) => Number(b.ABS || 0) - Number(a.ABS || 0))
+        .slice(0, 20)
+    }
 
     return {
-      categories: sorted.map(r => r.Supervisor),
-      presentes: sorted.map(r => Number(r.Presentes || 0)),
-      faltas: sorted.map(r => Number(r.Faltas || 0)),
-      escalados: sorted.map(r => Number(r.Escalados || 0)),
-      abs: sorted.map(r => Number(r.ABS || 0))
+      categories: validRows.map(r => r.Supervisor),
+      presentes: validRows.map(r => Number(r.Presentes || 0)),
+      faltas: validRows.map(r => Number(r.Faltas || 0)),
+      escalados: validRows.map(r => Number(r.Escalados || 0)),
+      abs: validRows.map(r => Number(r.ABS || 0))
     }
-  }, [resumoSupervisor])
+  }, [resumoSupervisor, chartViewMode])
 
   const supervisorChartSeries = useMemo(() => [
     { name: 'Presentes', type: 'column', data: supervisorChartData.presentes },
@@ -96,27 +112,27 @@ export default function SupervisorPage() {
       annotations: buildAbsTargetAnnotation(5, 1),
       plotOptions: {
         bar: {
-          columnWidth: '45%',
-          borderRadius: 4,
+          columnWidth: supervisorChartData.categories.length <= 12 ? '38%' : '50%',
+          borderRadius: 6,
           borderRadiusApplication: 'end'
         }
       },
       dataLabels: {
-        enabled: true,
-        enabledOnSeries: [2],
-        formatter: (val) => `${Number(val).toFixed(1)}%`,
-        style: chartDataLabelStyle,
-        background: chartDataLabelBg
+        enabled: false
       },
       xaxis: {
         categories: supervisorChartData.categories,
         labels: {
-          rotate: -30,
+          rotate: -25,
           rotateAlways: supervisorChartData.categories.length > 4,
           trim: true,
-          maxHeight: 96,
+          maxHeight: 85,
+          formatter: (val) => {
+            if (!val) return ''
+            return val.length > 18 ? `${val.slice(0, 16)}…` : val
+          },
           style: {
-            fontSize: '10.5px',
+            fontSize: '11px',
             fontFamily: TYPOGRAPHY.fonts.sans,
             fontWeight: 600,
             colors: HAPVIDA_PALETTE.slate500
@@ -189,17 +205,55 @@ export default function SupervisorPage() {
           subtitle="Clique na barra de qualquer supervisor para filtrar a lista detalhada de operadores"
           loading={loading}
           action={
-            selectedSupervisor && (
-              <Chip
-                color="primary"
-                variant="outlined"
-                size="small"
-                label={`Filtro: ${selectedSupervisor}`}
-                onDelete={() => setSelectedSupervisor(null)}
-                deleteIcon={<FilterAltOffIcon />}
-                sx={{ fontWeight: 600 }}
-              />
-            )
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setChartViewMode('topAbs')}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                    chartViewMode === 'topAbs'
+                      ? 'bg-white text-blue-900 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Top 12 Ofensores
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartViewMode('topVolume')}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                    chartViewMode === 'topVolume'
+                      ? 'bg-white text-blue-900 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Top 12 Equipes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartViewMode('allFaltas')}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                    chartViewMode === 'allFaltas'
+                      ? 'bg-white text-blue-900 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Com Faltas
+                </button>
+              </div>
+
+              {selectedSupervisor && (
+                <Chip
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                  label={`Filtro: ${selectedSupervisor}`}
+                  onDelete={() => setSelectedSupervisor(null)}
+                  deleteIcon={<FilterAltOffIcon />}
+                  sx={{ fontWeight: 600 }}
+                />
+              )}
+            </div>
           }
         >
           <div className="p-4">

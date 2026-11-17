@@ -47,6 +47,7 @@ export default function SegmentPage() {
   const loading = useDashboardStore(s => s.loading)
   const geralData = useDashboardStore(s => s.geralData)
   const [selectedSegment, setSelectedSegment] = useState(null)
+  const [chartViewMode, setChartViewMode] = useState('topAbs')
 
   const kpis = geralData.kpis || {}
   const resumoRows = geralData.resumoSegmento || []
@@ -62,7 +63,27 @@ export default function SegmentPage() {
   }, [selectedSegment, operadores])
 
   const segmentChartData = useMemo(() => {
-    const validRows = resumoRows.filter(r => r.Segmento && r.Segmento !== 'TOTAL GERAL')
+    let validRows = resumoRows.filter(r => r.Segmento && r.Segmento !== 'TOTAL GERAL')
+
+    if (chartViewMode === 'topAbs') {
+      // Prioriza os 10 maiores ofensores (maior ABS%) que tenham faltas ou ABS registrado
+      validRows = validRows
+        .filter(r => Number(r.Faltas || 0) > 0 || Number(r.ABS || 0) > 0)
+        .sort((a, b) => Number(b.ABS || 0) - Number(a.ABS || 0))
+        .slice(0, 10)
+    } else if (chartViewMode === 'topVolume') {
+      // 10 maiores segmentos por contingente/escalados
+      validRows = [...validRows]
+        .sort((a, b) => Number(b.Escalados || 0) - Number(a.Escalados || 0))
+        .slice(0, 10)
+    } else {
+      // Todos com faltas registradas (até 18 itens para não sobrepor)
+      validRows = validRows
+        .filter(r => Number(r.Faltas || 0) > 0)
+        .sort((a, b) => Number(b.ABS || 0) - Number(a.ABS || 0))
+        .slice(0, 18)
+    }
+
     return {
       categories: validRows.map(r => r.Segmento),
       presentes: validRows.map(r => Math.max(0, Number(r.Escalados || 0) - Number(r.Faltas || 0))),
@@ -70,7 +91,7 @@ export default function SegmentPage() {
       escalados: validRows.map(r => Number(r.Escalados || 0)),
       abs: validRows.map(r => Number(r.ABS || 0))
     }
-  }, [resumoRows])
+  }, [resumoRows, chartViewMode])
 
   const segmentChartSeries = useMemo(() => [
     { name: 'Presentes', type: 'column', data: segmentChartData.presentes },
@@ -108,23 +129,25 @@ export default function SegmentPage() {
       annotations: buildAbsTargetAnnotation(5, 1),
       plotOptions: {
         bar: {
-          columnWidth: '42%',
-          borderRadius: 4,
+          columnWidth: segmentChartData.categories.length <= 10 ? '36%' : '48%',
+          borderRadius: 6,
           borderRadiusApplication: 'end'
         }
       },
       dataLabels: {
-        enabled: true,
-        enabledOnSeries: [2],
-        formatter: (val) => `${Number(val).toFixed(1)}%`,
-        style: chartDataLabelStyle,
-        background: chartDataLabelBg
+        enabled: false
       },
       xaxis: {
         categories: segmentChartData.categories,
         labels: {
           rotate: -20,
           rotateAlways: segmentChartData.categories.length > 5,
+          trim: true,
+          maxHeight: 75,
+          formatter: (val) => {
+            if (!val) return ''
+            return val.length > 20 ? `${val.slice(0, 18)}…` : val
+          },
           style: {
             fontSize: '11px',
             fontFamily: TYPOGRAPHY.fonts.sans,
@@ -297,17 +320,55 @@ export default function SegmentPage() {
           subtitle="Clique em qualquer barra de segmento para filtrar o detalhamento de operadores"
           loading={loading}
           action={
-            selectedSegment && (
-              <Chip
-                color="primary"
-                variant="outlined"
-                size="small"
-                label={`Filtro: ${selectedSegment}`}
-                onDelete={() => setSelectedSegment(null)}
-                deleteIcon={<FilterAltOffIcon />}
-                sx={{ fontWeight: 600 }}
-              />
-            )
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setChartViewMode('topAbs')}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                    chartViewMode === 'topAbs'
+                      ? 'bg-white text-blue-900 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Top 10 Ofensores
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartViewMode('topVolume')}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                    chartViewMode === 'topVolume'
+                      ? 'bg-white text-blue-900 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Top 10 Volume
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartViewMode('allFaltas')}
+                  className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                    chartViewMode === 'allFaltas'
+                      ? 'bg-white text-blue-900 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Com Faltas
+                </button>
+              </div>
+
+              {selectedSegment && (
+                <Chip
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                  label={`Filtro: ${selectedSegment}`}
+                  onDelete={() => setSelectedSegment(null)}
+                  deleteIcon={<FilterAltOffIcon />}
+                  sx={{ fontWeight: 600 }}
+                />
+              )}
+            </div>
           }
         >
           <div className="p-4">

@@ -109,11 +109,7 @@ export default function CoordinatorAtPage() {
         }
       },
       dataLabels: {
-        enabled: true,
-        enabledOnSeries: [2],
-        formatter: (val) => `${Number(val).toFixed(1)}%`,
-        style: chartDataLabelStyle,
-        background: chartDataLabelBg
+        enabled: false
       },
       xaxis: {
         categories: coordChartData.categories,
