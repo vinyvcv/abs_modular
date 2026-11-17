@@ -68,6 +68,8 @@ export default defineConfig(async () => {
     (await isPortReachable(apiHost, apiPortAbs))
   )
 
+  const frontendPort = Number(getEnvVar('PORT', '8501')) || 8501
+
   return {
     plugins: [react(), tailwindcss()],
     define: {
@@ -75,7 +77,7 @@ export default defineConfig(async () => {
     },
     server: {
       host: '0.0.0.0',
-      port: 3000,
+      port: frontendPort,
       allowedHosts: true,
       ...(hasExternalApi
         ? {
