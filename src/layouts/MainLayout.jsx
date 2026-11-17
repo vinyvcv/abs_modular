@@ -973,7 +973,7 @@ export default function MainLayout() {
           </div>
 
           {/* Rodapé Corporativo Padrão SGP */}
-          <footer className="mt-auto border-t border-slate-200/90 bg-white/80 backdrop-blur-xs px-6 py-2.5 text-[11px] text-slate-500 flex flex-wrap items-center justify-between gap-2 shrink-0">
+          <footer className="sticky bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-sm px-6 py-2 text-[11px] text-slate-500 flex items-center justify-between gap-4 shrink-0 shadow-xs">
             <div>
               Desenvolvido por <span className="font-medium text-slate-700">{APP_AUTHOR}</span>
             </div>
