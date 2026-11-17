@@ -138,7 +138,7 @@ export const SPACING = {
     24: 96,
     62: 248
   },
-  sidebarWidth: 248,
+  sidebarWidth: 264,
   sidebarCollapsedWidth: 72,
   topbarHeight: 60,
   controlHeight: 40,
@@ -170,7 +170,7 @@ export const SPACING = {
     'card-head': '48px',
     topbar: '60px',
     'sidebar-collapsed': '72px',
-    sidebar: '248px',
+    sidebar: '264px',
     'panel-sm': '240px',
     'panel-md': '288px',
     console: '416px',

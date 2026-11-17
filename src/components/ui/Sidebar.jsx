@@ -133,7 +133,7 @@ export function Sidebar({
                             <div className="hidden md:flex flex-col min-w-0">
                               <div className="flex items-center gap-1.5 min-w-0">
                                 <span
-                                  className={`text-body leading-tight truncate transition-colors duration-150 ${
+                                  className={`text-body leading-tight whitespace-nowrap transition-colors duration-150 ${
                                     isActive
                                       ? 'font-semibold text-hapvida-navy'
                                       : 'font-medium text-slate-800 group-hover:text-slate-950'
